@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Praise AI</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #e0f7fa, #f1f8e9);
+      padding: 20px;
+    }
+    #chatbox {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #4CAF50;
+      margin-bottom: 10px;
+    }
+    #messages {
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      padding-right: 10px;
+    }
+    .message {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    .user {
+      background-color: #e0f7fa;
+      text-align: right;
+      color: #0077b6;
+    }
+    .ai {
+      background-color: #f1f8e9;
+      text-align: left;
+      color: #388e3c;
+    }
+    input[type="text"] {
+      width: 65%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 10px;
+      margin-left: 5px;
+      border-radius: 6px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #controls {
+      margin-top: 10px;
+      text-align: center;
+    }
+    #status {
+      text-align: center;
+      font-size: 0.9em;
+      color: #888;
+      margin-top: 5px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="chatbox">
+    <h2>Praise AI</h2>
+    <div id="messages"></div>
+    <div id="controls">
+      <input type="text" id="userInput" placeholder="Type your message..." />
+      <button onclick="sendMessage()">Send</button>
+      <button onclick="startVoice()">🎤 Speak</button>
+      <button onclick="clearHistory()">🗑️ Clear History</button>
+    </div>
+    <div id="status">Your conversation is saved locally.</div>
+  </div>
+
+  <script>
+    const messages = JSON.parse(localStorage.getItem('praiseAIHistory')) || [];
+
+    function loadHistory() {
+      messages.forEach(({ text, sender }) => displayMessage(text, sender));
+    }
+
+    function saveMessage(text, sender) {
+      messages.push({ text, sender });
+      localStorage.setItem('praiseAIHistory', JSON.stringify(messages));
+    }
+
+    function clearHistory() {
+      localStorage.removeItem('praiseAIHistory');
+      document.getElementById('messages').innerHTML = '';
+      document.getElementById('status').textContent = 'History cleared.';
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('userInput');
+      const message = input.value.trim();
+      if (!message) return;
+
+      displayMessage(message, 'user');
+      saveMessage(message, 'user');
+      input.value = '';
+      document.getElementById('status').textContent = 'Thinking...';
+
+      try {
+        const response = await fetch('http://localhost:3000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await response.json();
+        displayMessage(data.reply, 'ai');
+        saveMessage(data.reply, 'ai');
+        document.getElementById('status').textContent = 'Praise AI is ready.';
+      } catch (error) {
+        const errorMsg = 'Praise AI is having a moment. Try again soon!';
+        displayMessage(errorMsg, 'ai');
+        saveMessage(errorMsg, 'ai');
+        document.getElementById('status').textContent = 'Connection error.';
+      }
+    }
+
+    function displayMessage(text, sender) {
+      const messagesDiv = document.getElementById('messages');
+      const msg = document.createElement('div');
+      msg.className = `message ${sender}`;
+      msg.textContent = text;
+      messagesDiv.appendChild(msg);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function startVoice() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event) => {
+        const voiceText = event.results[0][0].transcript;
+        document.getElementById('userInput').value = voiceText;
+        sendMessage();
+      };
+
+      recognition.onerror = (event) => {
+        alert('Voice recognition error: ' + event.error);
+      };
+
+      recognition.start();
+    }
+
+    window.onload = loadHistory;
+  </script>
+</body>
+</html>
