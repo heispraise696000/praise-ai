@@ -1,35 +1,30 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-app.use(cors());
 const bodyParser = require('body-parser');
 const axios = require('axios');
-require('dotenv').config();
 
 const app = express();
-const PORT = 3000;
-
 app.use(cors());
 app.use(bodyParser.json());
 
 app.post('/chat', async (req, res) => {
   const userMessage = req.body.message;
 
+  if (!userMessage) {
+    return res.status(400).json({ error: 'No message provided' });
+  }
+
   try {
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
         model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are Praise AI, a motivational and affirming assistant. Always respond with positivity, encouragement, and uplifting energy. Use kind words, praise the user’s efforts, and help them feel empowered.'
-          },
-          { role: 'user', content: userMessage }
-        ]
+        messages: [{ role: 'user', content: userMessage }]
       },
       {
         headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
@@ -39,10 +34,10 @@ app.post('/chat', async (req, res) => {
     res.json({ reply: aiReply });
   } catch (error) {
     console.error('OpenAI error:', error.response?.data || error.message);
-    res.status(500).json({ reply: 'Error connecting to Praise AI.' });
+    res.status(500).json({ error: 'Failed to connect to OpenAI' });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+app.listen(3000, () => {
+  console.log('✅ Praise AI backend running on port 3000');
 });
